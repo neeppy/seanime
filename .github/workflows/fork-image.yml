@@ -1,13 +1,20 @@
-# Fork-only. Builds the server image (fork/docker/Dockerfile) and, on main,
-# pushes it to ghcr.io/neeppy/seanime as <upstream version>-fork.<run number>
-# (e.g. 3.10.4-fork.12) and :latest. Renovate on the homelab repo watches
-# those tags and opens the deploy PR. Pull requests only build, to check.
+# Fork-only. Builds the server image (fork/docker/Dockerfile).
+#
+#   tag vX.Y.Z      -> ghcr.io/neeppy/seanime:X.Y.Z, :X.Y, :X and :latest,
+#                      plus a GitHub Release. Dependabot on the homelab repo
+#                      opens the deploy PR for new X.Y.Z tags.
+#   push to main    -> :edge only, which nothing deploys
+#   pull request    -> build only, as a check
+#
+# Releases are cut with fork/scripts/release.sh (the upstream sync does this
+# itself for its merges). The fork's versions are its own, not upstream's.
 
 name: Fork image
 
 on:
   push:
     branches: [main]
+    tags: ["v*.*.*"]
     paths-ignore: ["**.md", "docs/**", ".github/ISSUE_TEMPLATE/**"]
   pull_request:
   workflow_dispatch:
@@ -20,9 +27,6 @@ permissions:
   contents: read
   packages: write
 
-env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/seanime
-
 jobs:
   image:
     runs-on: ubuntu-latest
@@ -30,12 +34,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Work out the tag
-        id: version
-        run: |
-          version=$(sed -nE 's/^\s*Version\s*=\s*"([^"]+)".*/\1/p' internal/constants/constants.go | head -1)
-          [[ -n "$version" ]] || { echo "::error::No Version in internal/constants/constants.go"; exit 1; }
-          echo "tag=${version}-fork.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/seanime
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=edge,branch=main
+            type=ref,event=pr
+          labels: |
+            org.opencontainers.image.title=seanime
+            org.opencontainers.image.description=Seanime server (neeppy fork), hwaccel build
 
       - uses: docker/setup-buildx-action@v3
 
@@ -53,16 +64,49 @@ jobs:
           target: hwaccel
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: |
-            ${{ env.IMAGE }}:${{ steps.version.outputs.tag }}
-            ${{ env.IMAGE }}:latest
-          labels: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.version=${{ steps.version.outputs.tag }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Summary
         if: github.event_name != 'pull_request'
-        run: echo "Pushed \`${IMAGE}:${{ steps.version.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          echo "Pushed:" >> "$GITHUB_STEP_SUMMARY"
+          sed 's/^/- `/; s/$/`/' <<< "$TAGS" >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    needs: image
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # actions/checkout turns the tag into a lightweight one; fetch it
+          # again to read the annotation (the release note).
+          fetch-tags: true
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}"
+          note=$(git tag -l --format='%(contents)' "$TAG" | sed '/^-----BEGIN/,$d')
+          upstream=$(sed -nE 's/^\s*Version\s*=\s*"([^"]+)".*/\1/p' internal/constants/constants.go | head -1)
+          prev=$(git tag -l 'v*.*.*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -vx "$TAG" | head -1 || true)
+          generated=$(gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f tag_name="$TAG" ${prev:+-f previous_tag_name="$prev"} --jq .body)
+          {
+            echo "${note}"
+            echo
+            echo "Based on Seanime ${upstream}. Image: \`ghcr.io/${GITHUB_REPOSITORY_OWNER}/seanime:${TAG#v}\`"
+            echo
+            echo "${generated}"
+          } > notes.md
+          gh release create "$TAG" --title "$TAG" --notes-file notes.md --verify-tag

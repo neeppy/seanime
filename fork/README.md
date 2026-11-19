@@ -40,11 +40,29 @@ None yet.
   Jellyfin-FFmpeg and the Intel VAAPI/QSV drivers, user `seanime` (uid 1000) with
   its config in `/home/seanime/.config/Seanime`. Keep that user and path: the
   NAS mounts the existing config there.
-- `.github/workflows/fork-image.yml` pushes
-  `ghcr.io/neeppy/seanime:<version>-fork.<run>` on every push to `main`.
-  Renovate on the homelab repo opens a PR bumping that tag; merging it deploys.
 - `.github/workflows/fork-upstream-sync.yml` merges upstream's latest release
-  every Monday. A clean merge that builds goes straight to `main`. Otherwise
-  Claude resolves it and opens a PR labelled `ai-resolved` for review, or opens
-  an issue labelled `upstream-sync` if it can't. Either way a Telegram message
-  follows.
+  every Monday. A clean merge that builds goes straight to `main` and is
+  released as the next patch version. Otherwise Claude resolves it and opens a
+  PR labelled `ai-resolved` for review (merging it releases a patch version),
+  or opens an issue labelled `upstream-sync` if it can't. Either way a Telegram
+  message follows.
+
+## Versions and releases
+
+The fork has its own semver, starting at v1.0.0; the app itself still reports
+upstream's version (`internal/constants`, never edited here).
+
+- patch: upstream syncs and small fixes. minor: fork features. major:
+  breaking changes, e.g. one that needs a new Tenji release.
+- Release by tagging: `fork/scripts/release.sh patch|minor|major ["note"]`
+  tags HEAD with the next `vX.Y.Z` and pushes it. Upstream merges tag
+  themselves.
+- A `vX.Y.Z` tag makes `.github/workflows/fork-image.yml` push
+  `ghcr.io/neeppy/seanime:X.Y.Z` (also `:X.Y`, `:X`, `:latest`) and create a
+  GitHub Release. Pushes to `main` only update `:edge`, which nothing deploys.
+- Dependabot on the homelab repo opens a PR for each new `X.Y.Z`; merging it
+  deploys to the NAS.
+- Upstream's own release workflow (`release-draft-new.yml`) also triggers on
+  `v*` tags, so it is disabled in this repo (`gh workflow disable`, a setting,
+  not a file change). Local clones that fetched upstream hold upstream's
+  `v3.x` tags: never `git push --tags` from them.
