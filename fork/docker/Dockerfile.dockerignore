@@ -1,0 +1,15 @@
+# BuildKit reads this file for fork/docker/Dockerfile, so the repo root needs
+# no .dockerignore of its own (which upstream might add one day).
+.git
+**/node_modules
+seanime-web/out*
+seanime-web/web*
+web
+web-*
+seanime-denshi
+mobile
+docs
+test
+codegen
+*.md
+!seanime-web/**/*.md
