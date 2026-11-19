@@ -42,27 +42,29 @@ None yet.
   NAS mounts the existing config there.
 - `.github/workflows/fork-upstream-sync.yml` merges upstream's latest release
   every Monday. A clean merge that builds goes straight to `main` and is
-  released as the next patch version. Otherwise Claude resolves it and opens a
-  PR labelled `ai-resolved` for review (merging it releases a patch version),
+  released. Otherwise Claude resolves it and opens a PR labelled
+  `ai-resolved` for review (merging it releases),
   or opens an issue labelled `upstream-sync` if it can't. Either way a Telegram
   message follows.
 
 ## Versions and releases
 
-The fork has its own semver, starting at v1.0.0; the app itself still reports
-upstream's version (`internal/constants`, never edited here).
+The fork's versions are its own and calendar-based: `vYEAR.MONTH.N`, the Nth
+release of that month in UTC (`v2026.11.1`, `v2026.11.2`, `v2026.12.1`). No
+leading zeros, so they are valid semver and sort correctly, and they never
+share a name with upstream's tags (`v0.x` to `v3.x`). The app itself still
+reports upstream's version (`internal/constants`, never edited here). A
+version says nothing about what changed; breaking changes (e.g. one that
+needs a new Tenji release) go in the release note.
 
-- patch: upstream syncs and small fixes. minor: fork features. major:
-  breaking changes, e.g. one that needs a new Tenji release.
-- Release by tagging: `fork/scripts/release.sh patch|minor|major ["note"]`
-  tags HEAD with the next `vX.Y.Z` and pushes it. Upstream merges tag
-  themselves.
-- A `vX.Y.Z` tag makes `.github/workflows/fork-image.yml` push
-  `ghcr.io/neeppy/seanime:X.Y.Z` (also `:X.Y`, `:X`, `:latest`) and create a
-  GitHub Release. Pushes to `main` only update `:edge`, which nothing deploys.
-- Dependabot on the homelab repo opens a PR for each new `X.Y.Z`; merging it
+- Release with `fork/scripts/release.sh ["note"]`: it tags HEAD with the next
+  version and pushes it. Upstream merges release themselves.
+- A version tag makes `.github/workflows/fork-image.yml` push
+  `ghcr.io/neeppy/seanime:<version>` and `:latest` and create a GitHub
+  Release. Pushes to `main` only update `:edge`, which nothing deploys.
+- Dependabot on the homelab repo opens a PR for each new version; merging it
   deploys to the NAS.
-- Upstream's own release workflow (`release-draft-new.yml`) also triggers on
-  `v*` tags, so it is disabled in this repo (`gh workflow disable`, a setting,
-  not a file change). Local clones that fetched upstream hold upstream's
-  `v3.x` tags: never `git push --tags` from them.
+- Upstream's own release workflow (`release-draft-new.yml`) triggers on `v*`
+  tags, so it is disabled in this repo (`gh workflow disable`, a setting, not
+  a file change). Local clones that fetched upstream hold upstream's tags:
+  never `git push --tags` from them.

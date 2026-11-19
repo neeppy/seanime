@@ -1,6 +1,6 @@
 # Fork-only. When an upstream-sync/<tag> PR (the ai-resolved ones from
-# fork-upstream-sync.yml) is merged, releases it as the next patch version,
-# like the sync does for clean merges. The tag is pushed with SYNC_TOKEN so
+# fork-upstream-sync.yml) is merged, releases it as the next version, like
+# the sync does for clean merges. The tag is pushed with SYNC_TOKEN so
 # that it starts fork-image.yml (pushes made with GITHUB_TOKEN don't).
 
 name: Release upstream merge
@@ -23,7 +23,7 @@ jobs:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           persist-credentials: false
 
-      - name: Tag the next patch release
+      - name: Tag the next release
         env:
           GH_TOKEN: ${{ secrets.SYNC_TOKEN }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
@@ -31,4 +31,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           PUSH_URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
-            fork/scripts/release.sh patch "Merge upstream ${HEAD_REF#upstream-sync/}" | tee -a "$GITHUB_STEP_SUMMARY"
+            fork/scripts/release.sh "Merge upstream ${HEAD_REF#upstream-sync/}" | tee -a "$GITHUB_STEP_SUMMARY"

@@ -1,47 +1,41 @@
 #!/usr/bin/env bash
-# Tags the next fork release (vX.Y.Z) at HEAD and pushes the tag, which makes
-# fork-image.yml build ghcr.io/neeppy/seanime:X.Y.Z and a GitHub Release.
+# Tags the next fork release at HEAD and pushes the tag, which makes
+# fork-image.yml build ghcr.io/neeppy/seanime:<version> and a GitHub Release.
 #
-#   fork/scripts/release.sh patch|minor|major ["release note"]
-#   fork/scripts/release.sh --dry-run minor       # print the tag, change nothing
+#   fork/scripts/release.sh ["release note"]
+#   fork/scripts/release.sh --dry-run          # print the tag, change nothing
 #
-# patch: upstream syncs and small fixes. minor: fork features. major: breaking
-# changes, e.g. one that needs a new Tenji release.
+# Versions are calendar-based: vYEAR.MONTH.N, the Nth release of that month
+# in UTC (v2026.11.1, v2026.11.2, v2026.12.1). No leading zeros, so they are
+# also valid semver and sort correctly; Dependabot compares the image tags as
+# semver. They never share a name with upstream's tags (v0.x to v3.x so far).
 #
-# The fork's versions are its own (they started at v1.0.0) and are read from
-# origin, never from local tags: a clone that fetched upstream also holds
-# upstream's v3.x tags. Never `git push --tags` from such a clone.
-#
-# PUSH_URL overrides where the tag goes (CI passes a URL with a token).
+# Existing versions are read from the remote, never from local tags: a clone
+# that fetched upstream also holds upstream's tags. Never `git push --tags`
+# from such a clone. PUSH_URL overrides the remote (CI passes a token URL).
 set -euo pipefail
 
 dry_run=false
 [[ "${1:-}" == --dry-run ]] && { dry_run=true; shift; }
-bump="${1:-}"
-note="${2:-}"
-[[ "$bump" =~ ^(patch|minor|major)$ ]] || { sed -n '2,15p' "$0" >&2; exit 2; }
+[[ "${1:-}" =~ ^(-h|--help)$ ]] && { sed -n '2,15p' "$0"; exit 0; }
+note="${1:-}"
 
 cd "$(git rev-parse --show-toplevel)"
 remote="${PUSH_URL:-origin}"
 
-latest=$(git ls-remote --tags --refs "$remote" 'v*' \
-  | sed -nE 's#.*refs/tags/(v[0-9]+\.[0-9]+\.[0-9]+)$#\1#p' \
-  | sort -V | tail -1)
+ours=$(git ls-remote --tags --refs "$remote" 'v*' \
+  | sed -nE 's#.*refs/tags/(v[1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*)$#\1#p' | sort -V)
+latest=$(tail -1 <<< "$ours")
 
-if [[ -z "$latest" ]]; then
-  next=v1.0.0
-else
-  IFS=. read -r major minor patch <<< "${latest#v}"
-  case "$bump" in
-    patch) patch=$((patch + 1)) ;;
-    minor) minor=$((minor + 1)); patch=0 ;;
-    major) major=$((major + 1)); minor=0; patch=0 ;;
-  esac
-  next="v${major}.${minor}.${patch}"
-fi
+year=$(date -u +%Y)
+month=$(date -u +%-m)
+n=$(sed -nE "s/^v${year}\.${month}\.([0-9]+)$/\1/p" <<< "$ours" | sort -n | tail -1)
+next="v${year}.${month}.$(( ${n:-0} + 1 ))"
 
-if git ls-remote --exit-code --tags "$remote" "refs/tags/${next}" >/dev/null; then
-  echo "${next} already exists on the remote." >&2; exit 1
+# A clock that is wrong, or a hand-made tag from the future, must not make
+# versions go backwards.
+if [[ -n "$latest" && "$(printf '%s\n' "$latest" "$next" | sort -V | tail -1)" != "$next" ]]; then
+  echo "Next tag ${next} would not sort after the latest, ${latest}." >&2; exit 1
 fi
 
 echo "Latest: ${latest:-none}  ->  ${next} at $(git rev-parse --short HEAD)"

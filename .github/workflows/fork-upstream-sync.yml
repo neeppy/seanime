@@ -1,11 +1,11 @@
 # Fork-only. Once a week, merges upstream's latest release tag into main.
 #
 #   clean merge + build passes  -> pushed straight to main and released as
-#                                  the next patch version (fork-image.yml
-#                                  then builds the image and the release)
+#                                  the next version (fork-image.yml then
+#                                  builds the image and the release)
 #   conflicts or build fails    -> Claude (Sonnet) resolves on a branch:
 #       resolved, build passes  -> PR labelled ai-resolved, for review;
-#                                  merging it releases a patch version
+#                                  merging it releases the next version
 #                                  (fork-release-upstream-merge.yml)
 #       gave up / still broken  -> issue labelled upstream-sync
 #   PR, issue or failure        -> Telegram message
@@ -133,7 +133,7 @@ jobs:
           url="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push "$url" HEAD:main
           # Pushed with the PAT, so the tag starts fork-image.yml's release.
-          PUSH_URL="$url" fork/scripts/release.sh patch "Merge upstream ${TAG}" | tee -a "$GITHUB_STEP_SUMMARY"
+          PUSH_URL="$url" fork/scripts/release.sh "Merge upstream ${TAG}" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "Merged ${TAG} cleanly, pushed to main and tagged the release." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Brief Claude

@@ -1,13 +1,13 @@
 # Fork-only. Builds the server image (fork/docker/Dockerfile).
 #
-#   tag vX.Y.Z      -> ghcr.io/neeppy/seanime:X.Y.Z, :X.Y, :X and :latest,
-#                      plus a GitHub Release. Dependabot on the homelab repo
-#                      opens the deploy PR for new X.Y.Z tags.
+#   tag vYYYY.M.N   -> ghcr.io/neeppy/seanime:YYYY.M.N and :latest, plus a
+#                      GitHub Release. Dependabot on the homelab repo opens
+#                      the deploy PR for each new version.
 #   push to main    -> :edge only, which nothing deploys
 #   pull request    -> build only, as a check
 #
 # Releases are cut with fork/scripts/release.sh (the upstream sync does this
-# itself for its merges). The fork's versions are its own, not upstream's.
+# itself for its merges). Versions are the fork's own, calendar-based ones.
 
 name: Fork image
 
@@ -40,8 +40,6 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/seanime
           tags: |
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
             type=edge,branch=main
             type=ref,event=pr
           labels: |
@@ -100,6 +98,7 @@ jobs:
           note=$(git tag -l --format='%(contents)' "$TAG" | sed '/^-----BEGIN/,$d')
           upstream=$(sed -nE 's/^\s*Version\s*=\s*"([^"]+)".*/\1/p' internal/constants/constants.go | head -1)
           prev=$(git tag -l 'v*.*.*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -vx "$TAG" | head -1 || true)
+          # (CI clones hold only the fork's own tags, never upstream's.)
           generated=$(gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
             -f tag_name="$TAG" ${prev:+-f previous_tag_name="$prev"} --jq .body)
           {
