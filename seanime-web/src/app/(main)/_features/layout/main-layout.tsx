@@ -35,6 +35,7 @@ import { LoadingOverlayWithLogo } from "@/components/shared/loading-overlay-with
 import { AppLayout, AppLayoutContent, AppLayoutSidebar, AppSidebarProvider } from "@/components/ui/app-layout"
 import { usePathname, useRouter } from "@/lib/navigation"
 import { __isElectronDesktop__ } from "@/types/constants"
+import { ForkBrowserNativePlayer } from "@/fork/browser-native-player" // fork: browser built-in player
 import React from "react"
 import { useServerStatus } from "../../_hooks/use-server-status"
 import { useInvalidateQueriesListener } from "../../_listeners/invalidate-queries.listeners"
@@ -79,6 +80,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
                     )}
                 </React.Suspense>
             )}
+            <ForkBrowserNativePlayer /> {/* fork: browser built-in player */}
             <NakamaManager />
             <NakamaWatchPartyChatProvider />
             <NakamaWatchPartyChat />

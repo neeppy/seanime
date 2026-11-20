@@ -20,6 +20,7 @@ import { RadioGroup } from "@/components/ui/radio-group"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { __isElectronDesktop__ } from "@/types/constants"
+import { ForkBrowserNativePlayerSettings } from "@/fork/browser-native-player" // fork: browser built-in player
 import { useAtom, useSetAtom } from "jotai"
 import React from "react"
 import { BiDesktop } from "react-icons/bi"
@@ -290,6 +291,8 @@ export function PlaybackSettings() {
                     </div>
                 </SettingsCard>
             )}
+
+            <ForkBrowserNativePlayerSettings /> {/* fork: browser built-in player */}
 
             <SettingsCard
                 title="Downloaded Media"

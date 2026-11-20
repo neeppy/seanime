@@ -32,6 +32,7 @@ import { useRouter } from "@/lib/navigation"
 import { getImageUrl } from "@/lib/server/assets"
 import { WSEvents } from "@/lib/server/ws-events"
 import { __isElectronDesktop__ } from "@/types/constants"
+import { useForkStreamsUseNativePlayer } from "@/fork/browser-native-player" // fork: browser built-in player
 import { atom, useAtomValue } from "jotai"
 import { useAtom, useSetAtom } from "jotai/react"
 import React from "react"
@@ -63,6 +64,7 @@ export function usePlaylistManager() {
     const [playEpisodeRequestPending, setPlayEpisodeRequestPending] = useAtom(pm_playEpisodeRequestPending)
 
     const { downloadedMediaPlayback, torrentStreamingPlayback, electronPlaybackMethod } = useCurrentDevicePlaybackSettings()
+    const streamsUseNativePlayer = useForkStreamsUseNativePlayer() // fork: browser built-in player
     const { activeOnDevice } = useMediastreamActiveOnDevice()
 
     function startPlaylist(playlist: Anime_Playlist) {
@@ -79,7 +81,7 @@ export function usePlaylistManager() {
                         : activeOnDevice ? "transcode" : downloadedMediaPlayback,
                     streamPlaybackMethod: __isElectronDesktop__ && electronPlaybackMethod !== "default"
                         ? electronPlaybackMethod
-                        : torrentStreamingPlayback,
+                        : streamsUseNativePlayer ? "nativePlayer" : torrentStreamingPlayback, // fork: browser built-in player
                 },
             },
         })

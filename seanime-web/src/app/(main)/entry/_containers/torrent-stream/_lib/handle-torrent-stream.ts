@@ -25,6 +25,7 @@ import { clientIdAtom } from "@/app/websocket-provider"
 import { logger } from "@/lib/helpers/debug"
 import { WSEvents } from "@/lib/server/ws-events"
 import { __isElectronDesktop__ } from "@/types/constants"
+import { useForkStreamsUseNativePlayer } from "@/fork/browser-native-player" // fork: browser built-in player
 import { useQueryClient } from "@tanstack/react-query"
 import { useAtomValue } from "jotai"
 import { useSetAtom } from "jotai/react"
@@ -54,6 +55,7 @@ export function useHandleStartTorrentStream() {
     const setLoadingState = useSetAtom(__torrentstream__loadingStateAtom)
     const setIsLoaded = useSetAtom(__torrentstream__isLoadedAtom)
     const { torrentStreamingPlayback, electronPlaybackMethod } = useCurrentDevicePlaybackSettings()
+    const streamsUseNativePlayer = useForkStreamsUseNativePlayer() // fork: browser built-in player
     const { externalPlayerLink } = useExternalPlayerLink()
     const clientId = useAtomValue(clientIdAtom)
 
@@ -63,7 +65,7 @@ export function useHandleStartTorrentStream() {
 
     const getPlaybackType = React.useCallback((forcePlaybackMethod?: ForcePlaybackMethod) => {
         if (
-            (!forcePlaybackMethod && __isElectronDesktop__ && electronPlaybackMethod === ElectronPlaybackMethod.NativePlayer) ||
+            (!forcePlaybackMethod && streamsUseNativePlayer) || // fork: was __isElectronDesktop__ && electronPlaybackMethod === NativePlayer
             (forcePlaybackMethod && forcePlaybackMethod === "nativeplayer")
         ) {
             return "nativeplayer"
@@ -75,7 +77,7 @@ export function useHandleStartTorrentStream() {
             return "externalPlayerLink"
         }
         return "default"
-    }, [externalPlayerLink, torrentStreamingPlayback, electronPlaybackMethod])
+    }, [externalPlayerLink, torrentStreamingPlayback, electronPlaybackMethod, streamsUseNativePlayer]) // fork: + streamsUseNativePlayer
 
     const handleStreamSelection = (params: ManualTorrentStreamSelectionProps) => {
         const forcePlaybackMethod = getForcePlaybackMethod()

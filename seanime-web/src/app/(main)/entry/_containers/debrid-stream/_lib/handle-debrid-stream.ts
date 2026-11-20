@@ -12,6 +12,7 @@ import { ForcePlaybackMethod, useForcePlaybackMethod } from "@/app/(main)/entry/
 import { clientIdAtom } from "@/app/websocket-provider"
 import { logger } from "@/lib/helpers/debug"
 import { __isElectronDesktop__ } from "@/types/constants"
+import { useForkStreamsUseNativePlayer } from "@/fork/browser-native-player" // fork: browser built-in player
 import { useQueryClient } from "@tanstack/react-query"
 import { useAtomValue, useSetAtom } from "jotai"
 import { useAtom } from "jotai/react"
@@ -39,6 +40,7 @@ export function useHandleStartDebridStream() {
     const qc = useQueryClient()
 
     const { torrentStreamingPlayback, electronPlaybackMethod } = useCurrentDevicePlaybackSettings()
+    const streamsUseNativePlayer = useForkStreamsUseNativePlayer() // fork: browser built-in player
     const { externalPlayerLink } = useExternalPlayerLink()
     const clientId = useAtomValue(clientIdAtom)
 
@@ -50,7 +52,7 @@ export function useHandleStartDebridStream() {
 
     const getPlaybackType = React.useCallback((forcePlaybackMethod?: ForcePlaybackMethod) => {
         if (
-            (!forcePlaybackMethod && __isElectronDesktop__ && electronPlaybackMethod === ElectronPlaybackMethod.NativePlayer) ||
+            (!forcePlaybackMethod && streamsUseNativePlayer) || // fork: was __isElectronDesktop__ && electronPlaybackMethod === NativePlayer
             (forcePlaybackMethod && forcePlaybackMethod === "nativeplayer")
         ) {
             return "nativeplayer"
@@ -62,7 +64,7 @@ export function useHandleStartDebridStream() {
             return "externalPlayerLink"
         }
         return "default"
-    }, [externalPlayerLink, torrentStreamingPlayback, electronPlaybackMethod])
+    }, [externalPlayerLink, torrentStreamingPlayback, electronPlaybackMethod, streamsUseNativePlayer]) // fork: + streamsUseNativePlayer
 
     const handleStreamSelection = (params: DebridStreamSelectionProps) => {
         const forcePlaybackMethod = getForcePlaybackMethod()

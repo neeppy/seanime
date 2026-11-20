@@ -22,6 +22,7 @@ JSX) and list it below, so a merge can re-apply it.
 These always keep the fork's version in a merge:
 
 - `fork/**`
+- `seanime-web/src/fork/**` (fork UI code; it has to live under the web app's `src`)
 - `.github/workflows/fork-*.yml`
 
 Upstream's `.gitignore` ignores `.github/*` and `*.sh`, so add new files there
@@ -29,9 +30,30 @@ with `git add -f` (once tracked, the ignore rules no longer apply).
 
 ## Hooks into upstream code
 
-None yet.
-
 <!-- One line per hook: `path/to/file.ext` - what it does and why. -->
+
+### Built-in player in the browser
+
+`seanime-web/src/fork/browser-native-player.tsx` lets a plain browser play
+torrent and debrid streams in the built-in player (VideoCore, the
+`nativeplayer` playback type), which upstream offers only in Seanime Denshi.
+It's a per-device setting (localStorage `fork-browser-native-player`), off by
+default; Denshi keeps its own setting. No server change.
+
+- `seanime-web/src/app/(main)/entry/_containers/torrent-stream/_lib/handle-torrent-stream.ts`
+  and `.../debrid-stream/_lib/handle-debrid-stream.ts` - `getPlaybackType`
+  asks `useForkStreamsUseNativePlayer()` instead of `__isElectronDesktop__ &&
+  electronPlaybackMethod === NativePlayer` (import, hook call, condition, deps).
+- `seanime-web/src/app/(main)/_features/layout/main-layout.tsx` - mounts
+  `<ForkBrowserNativePlayer />`, which loads the player in a browser when enabled.
+- `seanime-web/src/app/(main)/settings/_components/playback-settings.tsx` -
+  shows `<ForkBrowserNativePlayerSettings />` above "Downloaded Media".
+- `seanime-web/src/app/(main)/_features/playlists/_containers/global-playlist-manager.tsx` -
+  tells the server the playlist's streams use the native player, so it doesn't
+  tear the player down between episodes.
+
+`isUsingNativePlayer` (the "play externally" menu items) is left as upstream
+has it: in a browser those would launch the player on the server machine.
 
 ## Building and shipping
 
