@@ -453,7 +453,7 @@ func (m *Matcher) matchLocalFile(lf *anime.LocalFile) {
 		currentScore += seasonPartScore
 
 		// 3. Year comparison
-		yearScore := calculateYearScore(fileYear, media, titleScore)
+		yearScore := calculateYearScore(fileYear, fileSeason, media, titleScore)
 		currentScore += yearScore
 
 		// 4. Base title matching bonus
@@ -1044,7 +1044,7 @@ func calculateSeasonPartScore(fileSeason, filePart, mediaSeason int, mediaSeason
 	return score
 }
 
-func calculateYearScore(fileYear int, media *anime.NormalizedMedia, titleScore float64) float64 {
+func calculateYearScore(fileYear int, fileSeason int, media *anime.NormalizedMedia, titleScore float64) float64 {
 	if fileYear <= 0 {
 		return 0.0
 	}
@@ -1054,6 +1054,14 @@ func calculateYearScore(fileYear int, media *anime.NormalizedMedia, titleScore f
 	}
 
 	mediaYear := *media.StartDate.Year
+
+	// fork: a later-season file carrying an older year is the series' premiere
+	// year, not this season's. Sonarr/Plex-style names do this ("Show (2022) -
+	// S02E01"), and AniList lists the sequel with its own, later start date.
+	// Stay neutral instead of applying the mismatch penalty.
+	if fileSeason > 1 && fileYear < mediaYear {
+		return 0.0
+	}
 
 	if fileYear == mediaYear {
 		// Scale the bonus based on title score confidence

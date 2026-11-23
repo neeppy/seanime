@@ -55,6 +55,18 @@ default; Denshi keeps its own setting. No server change.
 `isUsingNativePlayer` (the "play externally" menu items) is left as upstream
 has it: in a browser those would launch the player on the server machine.
 
+### Premiere year on later-season files
+
+Sonarr/Plex-style names carry the series' premiere year on every season
+(`Show (2022) - S02E01`), while AniList lists the sequel with its own, later
+start date, so the right entry took the -10 year-mismatch penalty and fell
+under the match threshold. Server-only.
+
+- `internal/library/scanner/matcher.go` - `calculateYearScore` takes the
+  file's season and returns 0 (neutral) when the season is 2+ and the file's
+  year is older than the entry's start year. Every other case is unchanged.
+  Tests: `internal/library/scanner/fork_year_score_test.go`.
+
 ## Building and shipping
 
 - `fork/scripts/build.sh` builds the web UI and the Go server, like the image does.
